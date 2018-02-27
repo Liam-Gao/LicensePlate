@@ -104,11 +104,11 @@ def findPlateNumberRegion(img):
         width = abs(box[0][0] - box[2][0])
         # 车牌正常情况下长高比在2.7-5之间
         ratio = float(width) / float(height)
-        print('ratio: ', ratio)
+        # print('ratio: ', ratio)
         if (ratio > 5.0 or ratio < 1.4):
             continue
         region.append(box)
-    print('region: ', region.__len__())
+    # print('region: ', region.__len__())
     return region
 
 
@@ -132,28 +132,39 @@ def detect(img):
     region = findPlateNumberRegion(getCombImg)
 
     # 用绿线画出这些找到的轮廓
+    print('this is region', region)
     for box in region:
         """
         you should convert your contour to numpy array first
         contours is a Python list of all the contours in the image. Each individual contour is a Numpy array of (x,y) coordinates of boundary points of the object.
         """
-        print(box)
+        # print('box', box)
         ctr = np.array(box).reshape((-1, 1, 2)).astype(np.int32)
-        print("asdas", [ctr])
+        # print("asdas", [ctr])
         cv2.drawContours(newImg, [ctr], 0, (0, 255, 0), 2)
+        rectt = cv2.minAreaRect(box)
+        angle = rectt[2]
+        # 矩形倾斜方向判断，往左上为True
+        flag = box[0][1] - box[3][1]
+        if flag >= 0:
+            angle_flag = True
+        else:
+            angle_flag = False
+        # cv2.boxPoints(rectt)
+        # print('----this is minrect: ', cv2.minAreaRect(box))
     cv2.imshow('testt', newImg)
     ys = [box[0, 1], box[1, 1], box[2, 1], box[3, 1]]
     xs = [box[0, 0], box[1, 0], box[2, 0], box[3, 0]]
     # argsort函数返回的是数组值从小到大的索引值
     ys_sorted_index = np.argsort(ys)
     xs_sorted_index = np.argsort(xs)
-
+    print('--------',xs_sorted_index, ys_sorted_index)
     x1 = box[xs_sorted_index[0], 0]
     x2 = box[xs_sorted_index[3], 0]
 
     y1 = box[ys_sorted_index[0], 1]
     y2 = box[ys_sorted_index[3], 1]
-
+    print('0----0: ', x1,x2,y1,y2)
     # img_org2 = img.copy()
     img_plate = img[int(y1):int(y2), int(x1):int(x2)]
     cv2.imshow('number plate', img_plate)
@@ -167,6 +178,7 @@ def detect(img):
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+    return angle, angle_flag
 
 
 if __name__ == '__main__':
@@ -177,5 +189,4 @@ if __name__ == '__main__':
     # imgg = cv2.imread("cccc.jpeg")
     # imgg = cv2.imread("cuan.jpeg")
 
-
-    detect(imgg)
+    angle = detect(imgg)
