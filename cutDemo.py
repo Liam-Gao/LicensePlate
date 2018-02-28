@@ -32,7 +32,9 @@ import math
 
 np.set_printoptions(threshold=np.inf)
 
-img = cv2.imread('number_plate1.jpg')
+# img = cv2.imread('number_plate1.jpg')
+img = cv2.imread('thistest.jpg')
+
 # cv2.imshow('original', img)
 
 # HSV处理

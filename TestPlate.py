@@ -27,11 +27,11 @@ from Projects.LicensePlate.processingImg import preprocess,BlueHsvImg,findPlateN
 img = cv2.imread("license4.png")
 testImg = img.copy()
 gray = cv2.cvtColor(testImg,cv2.COLOR_BGR2GRAY)
-ret, binary = cv2.threshold(gray,50,255,cv2.THRESH_BINARY)
-# cv2.imshow('binary', binary)
-#
-row,col = binary.shape
-#
+# ret, binary = cv2.threshold(gray,50,255,cv2.THRESH_BINARY)
+# # cv2.imshow('binary', binary)
+# #
+# row,col = binary.shape
+# #
 # angle = find_angle(binary, col, row)
 # if angle_flag:
 #     M = cv2.getRotationMatrix2D((col // 2, row // 2), angle / 2, 1)
@@ -43,12 +43,12 @@ row,col = binary.shape
 # rett, binaryy = cv2.threshold(dst_gray, 50, 255, cv2.THRESH_BINARY)
 # cv2.imshow('dst', dst)
 # cv2.imshow('img', binaryy)
-
-M = cv2.getRotationMatrix2D((col // 2, row // 2), -13, 1)
-dst = cv2.warpAffine(img, M, (col, row))
-cv2.imshow('aaddddd', dst)
-ange = detect(dst)
 #
+# M = cv2.getRotationMatrix2D((col // 2, row // 2), -13, 1)
+# dst = cv2.warpAffine(img, M, (col, row))
+# cv2.imshow('aaddddd', dst)
+# ange = detect(dst)
+# #
 # dst_gray = cv2.cvtColor(dst, cv2.COLOR_BGR2GRAY)
 # # ret, dst_binary = cv2.threshold(dst_gray,50,255,cv2.THRESH_BINARY)
 # # cv2.imshow('dsg', dst_binary)
@@ -76,6 +76,13 @@ ange = detect(dst)
 # returnimg, contours, hierarchy = cv2.findContours(dilation2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 # cv2.drawContours(dst, contours,-1,(0,255,0),2)
 # cv2.imshow('hh', dst)
+
+pts1 = np.float32([[10, 10], [10, 20], [20, 20]])
+pts2 = np.float32([[20, 20], [20, 30], [40, 40]])
+M = cv2.getAffineTransform(pts1,pts2)
+row,col = gray.shape
+ddst = cv2.warpAffine(gray, M, (col, row))
+cv2.imshow('affine', ddst)
 cv2.waitKey(0)
 #
 
