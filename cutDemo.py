@@ -122,7 +122,7 @@ for x in range(picRow):
         for y in range(picCol):
             binary[x][y] = 0
 
-# cv2.imshow("process binary: ", binary)
+cv2.imshow("process binary: ", binary)
 
 
 # 横着切过去，上一行 下一行的数值几乎都是黑色，那这一行就归为黑色
@@ -175,7 +175,7 @@ for contour in contours:
 
 print(picPoints)
 picPoints.sort(key=operator.itemgetter(0))
-# print(picPoints)
+print(picPoints)
 
 # 点不包含汉字在内
 if len(picPoints) == 7:
