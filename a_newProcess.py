@@ -59,8 +59,8 @@ def hsvprocess(img, isHsvOr_S):
         erosion = cv2.erode(dilation, element2, iterations=2)
         # element1 = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 3))
         # dilation = cv2.dilate(binary, element1, iterations=1)
-        cv2.imshow('S_HSV', erosion)
-        cv2.waitKey()
+        # cv2.imshow('S_HSV', erosion)
+        # cv2.waitKey()
         return dilation
     else:
         lower_blue = np.array([80, 43, 46])
@@ -69,8 +69,8 @@ def hsvprocess(img, isHsvOr_S):
 
         element1 = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 3))
         dilation = cv2.dilate(mask, element1, iterations=1)
-        cv2.imshow('Blue_HSV', dilation)
-        cv2.waitKey()
+        # cv2.imshow('Blue_HSV', dilation)
+        # cv2.waitKey()
         return dilation
 
 
@@ -89,9 +89,9 @@ def findPlateNumberRegion(combImg):
 
         # 找到最小的矩形，该矩形可能有方向
         rect = cv2.minAreaRect(approx)
-        angle = rect[2]
-        print('rect angle is:', angle)
-        if angle > -80 and angle < -30:
+        anglee = rect[2]
+
+        if anglee > -80 and anglee < -30:
             continue
         box = cv2.boxPoints(rect)
 
@@ -100,37 +100,59 @@ def findPlateNumberRegion(combImg):
         ratio = float(width) / float(height)
         if (ratio > 5.0 or ratio < 1.3):
             continue
+        print('rect angle is:', anglee)
         region.append(box)
     return region
 
 
 def writeRegions(region, img):
     newImg = img.copy()
-    for box in region:
-        ctr = np.array(box).reshape((-1, 1, 2)).astype(np.int32)
-        cv2.drawContours(newImg, [ctr], 0, (0, 255, 0), 2)
+    # print(cv2.contourArea(region[0]))
+    # print(cv2.contourArea(region[1]))
+    area_max_index = 0
+    if len(region) > 1:
+        area_max = cv2.contourArea(region[0])
+        print('area0', area_max)
+        for i in range(1, len(region)):
+            area = cv2.contourArea(region[i])
+            if area > 20000:
+                continue
+            print('area', area)
+            if area_max < area:
+                area_max = area
+                area_max_index = i
+    else:
+        pass
 
-        ys = [box[0, 1], box[1, 1], box[2, 1], box[3, 1]]
-        xs = [box[0, 0], box[1, 0], box[2, 0], box[3, 0]]
-        # argsort函数返回的是数组值从小到大的索引值
-        ys_sorted_index = np.argsort(ys)
-        xs_sorted_index = np.argsort(xs)
-        # print('--------',xs_sorted_index, ys_sorted_index)
-        x1 = box[xs_sorted_index[0], 0]
-        x2 = box[xs_sorted_index[3], 0]
-
-        y1 = box[ys_sorted_index[0], 1]
-        y2 = box[ys_sorted_index[3], 1]
-
-        img_plate = img[int(y1):int(y2), int(x1):int(x2)]
-        cv2.imshow('plate', newImg)
-        cv2.imshow('number plate', img_plate)
-        cv2.imwrite('thePlate.jpg', img_plate)
-
-        rect = cv2.minAreaRect(box)
-        angle = rect[2]
     cv2.waitKey()
-    return angle
+
+    box = region[area_max_index]
+    ctr = np.array(box).reshape((-1, 1, 2)).astype(np.int32)
+    cv2.drawContours(newImg, [ctr], 0, (0, 255, 0), 2)
+    # cv2.imshow('??????/', newImg)
+    # cv2.waitKey()
+    ys = [box[0, 1], box[1, 1], box[2, 1], box[3, 1]]
+    xs = [box[0, 0], box[1, 0], box[2, 0], box[3, 0]]
+    # argsort函数返回的是数组值从小到大的索引值
+    ys_sorted_index = np.argsort(ys)
+    xs_sorted_index = np.argsort(xs)
+    # print('--------',xs_sorted_index, ys_sorted_index)
+    x1 = box[xs_sorted_index[0], 0]
+    x2 = box[xs_sorted_index[3], 0]
+
+    y1 = box[ys_sorted_index[0], 1]
+    y2 = box[ys_sorted_index[3], 1]
+
+    img_plate = img[int(y1):int(y2), int(x1):int(x2)]
+    cv2.imshow('plate', newImg)
+    cv2.imshow('number plate', img_plate)
+    cv2.imwrite('thePlate.jpg', img_plate)
+
+    rect = cv2.minAreaRect(box)
+    angle2 = rect[2]
+    print('angle2: ', angle2)
+    cv2.waitKey()
+    return angle2
 
 
 def cutBlack(binary):
@@ -170,31 +192,48 @@ def cutBlack(binary):
     return upLine, downLine, leftLine, rightLine
 
 
-def findBlackLength(row, col, binary):
+def findWhiteLength(row, col, binary, flag=True):
     count = 0
-    for i in range(col):
-        # print(i)
-        if binary[row][i] != 0:
-            count += 1
-        else:
-            break
+    if flag:
+        for i in range(col):
+            # print(i)
+            if binary[row][i] != 0:
+                count += 1
+            else:
+                break
+    else:
+        for i in range(col):
+            # print(i)
+            if binary[row][i] == 0:
+                count += 1
+            else:
+                break
     return count
 
 
 def affineFunction(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    equ = cv2.equalizeHist(gray)
-    gaussian = cv2.GaussianBlur(equ, (3, 3), 0, 0, cv2.BORDER_DEFAULT)
-    ret, binary = cv2.threshold(gaussian, 125, 255, cv2.THRESH_OTSU + cv2.THRESH_BINARY)
+    # equ = cv2.equalizeHist(gray)
+    # gaussian = cv2.GaussianBlur(equ, (3, 3), 0, 0, cv2.BORDER_DEFAULT)
+    ret, binary = cv2.threshold(gray, 125, 255,  cv2.THRESH_BINARY)
     cv2.imshow('cubinary', binary)
-
+    cv2.waitKey()
     row, col = binary.shape
     row1 = int(row * 0.25)
     row2 = int(row * 0.5)
     row3 = int(row * 0.75)
-    row1Length = findBlackLength(row1, col, binary)
-    row2Length = findBlackLength(row2, col, binary)
-    row3Length = findBlackLength(row3, col, binary)
+    row1Length = findWhiteLength(row1, col, binary)
+    row2Length = findWhiteLength(row2, col, binary)
+    row3Length = findWhiteLength(row3, col, binary)
+
+    if row1Length == row2Length == row3Length == 0.0:
+        row1Length = findWhiteLength(row1, col, binary, False)
+        row2Length = findWhiteLength(row2, col, binary, False)
+        row3Length = findWhiteLength(row3, col, binary, False)
+
+    print('len1', row1Length)
+    print('len2', row2Length)
+    print('len3', row3Length)
 
     # 判断是斜率是正True还是负False，小于一定度数就不进行仿射变换
     angle_flag = False
@@ -205,9 +244,19 @@ def affineFunction(img):
     slope2 = abs(row1Length - row2Length) / abs(row2 - row1)
     slope3 = abs(row2Length - row3Length) / abs(row3 - row2)
     slope = (slope1 + slope2 + slope3) / 3
+    # print('slope1: ', slope1)
+    # print('slope2: ', slope2)
+    # print('slope3: ', slope3)
+    # print('slope: ', slope)
+    # # 以下为测试 斜率算出来为0的情况，
+    # if slope == 0.0:
+    #     slope = 0.2
+    #     angle_flag = True
 
     # 斜率大于0.1就进行仿射变换
-    if slope > 0.1:
+    global angle
+    print('this angle', angle)
+    if slope > 0.1 and angle < -5:
         x_move = int(row * slope)
         if angle_flag:
             pts1 = np.float32([[0, row - 1], [x_move, 0], [col - 1, 0]])
@@ -219,6 +268,7 @@ def affineFunction(img):
         M = cv2.getAffineTransform(pts1, pts2)
         affine = cv2.warpAffine(img, M, (col, row))
         cv2.imshow('affine', affine)
+        cv2.waitKey()
     else:
         affine = img
     cv2.waitKey()
@@ -332,25 +382,36 @@ def recongnitionPlate():
     feature = r["arr_0"]
     labels = r["arr_1"]
 
+    rr = np.load('trainChineseData.npz')
+    cFeature = rr["arr_0"]
+    cLabels = rr["arr_1"]
+
     lg = LogisticRegression()
     lg.fit(feature, labels)
+
+    lgg = LogisticRegression()
+    lgg.fit(cFeature, cLabels)
 
     c_dic = {'0': '0', '1': '1', '2': '2', '3': '3', '4': '4', '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
              '11': 'A', '12': 'B', '13': 'C', '14': 'D', '15': 'E', '16': 'F', '17': 'G', '18': 'H', '19': 'J',
              '20': 'K', '21': 'L', '22': 'M', '23': 'N', '24': 'P', '25': 'Q', '26': 'R', '27': 'S', '28': 'T',
-             '29': 'U', '30': 'V', '31': 'W', '32': 'X', '33': 'Y', '34': 'Z'}
+             '29': 'U', '30': 'V', '31': 'W', '32': 'X', '33': 'Y', '34': 'Z', '41': '川', '42': '京', '43': '闽',
+             '44': '粤', '45': '苏', '46': '沪', '47': '浙', }
 
-    for i in range(6):
-        img = cv2.imread('p' + str(i + 1) + '.jpg', 0)
+    for i in range(7):
+        img = cv2.imread('p' + str(i) + '.jpg', 0)
         img = cv2.resize(img, (47, 92))
         ret, binary = cv2.threshold(img, 100, 255, cv2.THRESH_BINARY)
         pre = np.array(whitePointFeature(binary)).reshape(1, -1)
         # # print(feature.shape, labels.shape, pre.shape)
-        print(c_dic[lg.predict(pre)[0]])
+        if i == 0:
+            print(c_dic[lgg.predict(pre)[0]])
+        else:
+            print(c_dic[lg.predict(pre)[0]])
 
 
 if __name__ == '__main__':
-    img = cv2.imread('license4.png')
+    img = cv2.imread('1.jpg')
     # 形态学处理
     dilation = preprocess(img)
     hsv = hsvprocess(img, False)
@@ -393,3 +454,4 @@ if __name__ == '__main__':
     cutPlateFunction(bigPlate)
     # 进行识别
     recongnitionPlate()
+    cv2.waitKey()
