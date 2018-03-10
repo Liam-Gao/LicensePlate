@@ -1,8 +1,6 @@
 import cv2
 import numpy as np
-import time
-from Projects.LicensePlate.processingImg import detect
-from Projects.LicensePlate.cutDemo import cutNoAnglePlate
+from Projects.LicensePlate.back_process import detect
 
 
 # 判断倾斜方向和计算车牌倾斜角度
@@ -132,108 +130,105 @@ def removeUD_Black(binary):
 
 def hsvProcess(img, binary):
     hsvimg = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    # cv2.imshow('hsvimg', hsvimg)
+    # h, s, v = cv2.split(hsvimg)
+    # hh = cv2.equalizeHist(h)
+    # ss = cv2.equalizeHist(s)
+    # vv = cv2.equalizeHist(v)
+    # newhsv = cv2.merge([hh, ss, vv])
+    # cv2.imshow('newhsv', newhsv)
     lower_blue = np.array([80, 43, 46])
     upper_blue = np.array([140, 255, 255])
     mask = cv2.inRange(hsvimg, lower_blue, upper_blue)
+    # cv2.imshow('mask', mask)
     mm = cv2.bitwise_and(mask, binary)
     cv2.imshow('hsv&binary', mm)
     return mm
 
-
 # imggg = cv2.imread("license4.png")
-imggg = cv2.imread("1.jpg")
-# imggg = cv2.imread("cuan.jpeg")
-
-angle, angle_flag = detect(imggg)
-print('angle', angle, angle_flag)
-
-# 倾斜车牌就进行旋转纠正
-if angle < 0 and angle > -75:
-    row, col = imggg.shape[:2]
-    if angle_flag:
-        M = cv2.getRotationMatrix2D((col // 2, row // 2), angle, 1)
-    else:
-        M = cv2.getRotationMatrix2D((col // 2, row // 2), -angle, 1)
-
-    dst = cv2.warpAffine(imggg, M, (col, row))
-    angle, angle_flag = detect(dst)
-
-
-    img = cv2.imread('cutplate.jpg')
-# cv2.imshow('img', img)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    gaussian = cv2.GaussianBlur(gray, (3, 3), 0, 0, cv2.BORDER_DEFAULT)
-    ret, binary = cv2.threshold(gaussian, 50, 255, cv2.THRESH_BINARY)
-    can = cv2.Canny(binary, 100, 200)
-# cv2.imshow('can', can)
-    cv2.imshow('binary', binary)
+# # imggg = cv2.imread("timg.jpg")
+# angle, angle_flag = detect(imggg)
 #
-    newSize = cv2.resize(can, (440, 140))
-    newImg = cv2.resize(img, (440, 140))
-    rows,cols = newImg.shape[:2]
-    cv2.imshow('newSize', newSize)
+# if angle < 0 and angle > -75:
+#     row, col = imggg.shape[:2]
+#     if angle_flag:
+#         M = cv2.getRotationMatrix2D((col // 2, row // 2), angle, 1)
+#     else:
+#         M = cv2.getRotationMatrix2D((col // 2, row // 2), -angle, 1)
+#
+#     dst = cv2.warpAffine(imggg, M, (col, row))
+#     angle, angle_flag = detect(dst)
+
+
+img = cv2.imread('number_plate1.jpg')
+# cv2.imshow('img', img)
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+gaussian = cv2.GaussianBlur(gray, (3, 3), 0, 0, cv2.BORDER_DEFAULT)
+ret, binary = cv2.threshold(gaussian, 50, 255, cv2.THRESH_BINARY)
+can = cv2.Canny(binary, 100, 200)
+# cv2.imshow('can', can)
+cv2.imshow('binary', binary)
+#
+newSize = cv2.resize(can, (440, 140))
+newImg = cv2.resize(img, (440, 140))
+rows,cols = newImg.shape[:2]
+cv2.imshow('newSize', newSize)
 
 # ------------------------------------------------------------------------------------
 
-    flag = caculateRotation(newSize)
-    angle, x1, x2, x3, y1, y2, y3 = caculateAngle(newSize)
-    print(x1,x2,x3,y1,y2,y3)
+flag = caculateRotation(newSize)
+angle, x1, x2, x3, y1, y2, y3 = caculateAngle(newSize)
+print(x1,x2,x3,y1,y2,y3)
 # 进行仿射变换
-    pts1 = None
-    pts2 = None
-    if flag:
-        pts1 = np.float32([[np.tan(angle)*y1, 0], [x2, y2], [440, 0]])
-        pts2 = np.float32([[0, 0], [x2, y2], [440-np.tan(angle)*140, 0]])
-    else:
-        pts1 = np.float32([[np.tan(angle) * 140, 140], [x2, y2], [440, 140]])
-        pts2 = np.float32([[0, 140], [x2, y2], [440-np.arctan(angle)*140, 140]])
-
-    M = cv2.getAffineTransform(pts1, pts2)
-    ddst = cv2.warpAffine(newImg, M, (cols, rows))
-    cv2.imshow('affine', ddst)
-    cv2.imwrite('affine.jpg', ddst)
-# ---------------------------------------------------------------------------------------
-    time.sleep(0.1)
-
-    cut = cv2.imread('affine.jpg')
-
-    cutt = cut.copy()
-    gg = cv2.cvtColor(cut, cv2.COLOR_BGR2GRAY)
-    r, b = cv2.threshold(gg, 50, 255, cv2.THRESH_BINARY)
-
-    hsv_binary = hsvProcess(cut, b)
-
-    newBinary = removeLR_Black(hsv_binary)
-    newBinaryy = removeUD_Black(newBinary)
-    # cv2.imshow('removeLR', newBinary)
-    cv2.imshow('removeUD', newBinaryy)
-
-    reImg, contours, hierarchy = cv2.findContours(newBinary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    picRow, picCol = cutt.shape[:2]
-    picPoints = []
-    for contour in contours:
-        if cv2.contourArea(contour) < 1000:
-            continue
-        x, y, w, h = cv2.boundingRect(contour)
-        if h < picRow / 2.5:
-            continue
-        if w < 8 or w > picCol * 1 / 4:
-            continue
-        print(x, y, w, h)
-        picPoints.append([x, y, w, h])
-    for xx, yy, ww, hh in picPoints:
-        testPic = cv2.rectangle(cutt, (xx, yy), (xx + ww, yy + hh), (0, 255, 0), 1)
-    cv2.imshow('aaaa', cutt)
-    binary_affine = cv2.threshold(gg, 50, 255, cv2.THRESH_BINARY)
-    cv2.imshow('binary_affine', b)
-
+pts1 = None
+pts2 = None
+if flag:
+    pts1 = np.float32([[np.tan(angle)*y1, 0], [x2, y2], [440, 0]])
+    pts2 = np.float32([[0, 0], [x2, y2], [440-np.tan(angle)*140, 0]])
 else:
-    cut = cv2.imread('cutplate.jpg')
-    cutNoAnglePlate(cut)
+    pts1 = np.float32([[np.tan(angle) * 140, 140], [x2, y2], [440, 140]])
+    pts2 = np.float32([[0, 140], [x2, y2], [440-np.arctan(angle)*140, 140]])
+
+M = cv2.getAffineTransform(pts1, pts2)
+ddst = cv2.warpAffine(newImg, M, (cols, rows))
+cv2.imshow('affine', ddst)
+# ---------------------------------------------------------------------------------------
+cut = cv2.imread('thistest.jpg')
+
+
+cutt = cut.copy()
+gg = cv2.cvtColor(cut,cv2.COLOR_BGR2GRAY)
+r,b = cv2.threshold(gg,50,255,cv2.THRESH_BINARY)
+
+hsv_binary = hsvProcess(cut, b)
+
+newBinary = removeLR_Black(hsv_binary)
+newBinaryy = removeUD_Black(newBinary)
+cv2.imshow('removeLR', newBinary)
+cv2.imshow('removeUD', newBinaryy)
+
+
+reImg, contours, hierarchy = cv2.findContours(newBinary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+picRow, picCol = cutt.shape[:2]
+picPoints = []
+for contour in contours:
+    if cv2.contourArea(contour) < 1000:
+        continue
+    x, y, w, h = cv2.boundingRect(contour)
+    if h < picRow / 2.5:
+        continue
+    if w < 8 or w > picCol * 1/4:
+        continue
+    print(x,y,w,h)
+    picPoints.append([x,y,w,h])
+for xx, yy, ww, hh in picPoints:
+    testPic = cv2.rectangle(cutt, (xx, yy ), (xx + ww , yy + hh ), (0, 255, 0), 1)
+cv2.imshow('aaaa',cutt)
+cv2.imshow('bbbb', b)
 
 
 
-
+cv2.waitKey()
 # def isRotated(binary):
 # #     往左上旋转为True
 #     row,col = binary.shape

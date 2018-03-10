@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
-import math
-import time
+
 
 def preprocess(gray):
     # 直方图均衡化
@@ -39,25 +38,21 @@ def BlueHsvImg(img):
     # hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     #
     # lower_blue = np.array([100, 43, 46])
-    # upper_blue = np.array([140, 255, 255])
+    # upper_blue = np.array([130, 255, 255])
     # mask = cv2.inRange(hsv, lower_blue, upper_blue)
     #
-    # element1 = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 3))
+    # element1 = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
     # dilation = cv2.dilate(mask, element1, iterations=1)
-    # cv2.imshow('S_HSV', dilation)
-    #
+
     # return dilation
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     h, s, v = cv2.split(hsv)
-    cv2.imshow('s', s)
-    # 只用S通道
     ret, binary = cv2.threshold(s, 100, 255, cv2.THRESH_BINARY)
     element1 = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 3))
     element2 = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 3))
     dilation = cv2.dilate(binary, element2, iterations=1)
     erosion = cv2.erode(dilation, element1, iterations=1)
-    cv2.imshow('S_HSV', erosion)
-    cv2.waitKey()
+    cv2.imshow('errr', erosion)
     return erosion
 
 def findPlateNumberRegion(img):
@@ -82,7 +77,6 @@ def findPlateNumberRegion(img):
         # 面积小的都筛选掉
         if (area < 2000):
             continue
-        # print('areaaaaaaaaaa: ', area)
 
         # 轮廓近似，作用很小
         epsilon = 0.001 * cv2.arcLength(cnt, True)
@@ -90,7 +84,6 @@ def findPlateNumberRegion(img):
 
         # 找到最小的矩形，该矩形可能有方向
         rect = cv2.minAreaRect(approx)
-        theAngle = rect[2]
         # print("rect is: ", rect)
 
         # box是四个点的坐标
@@ -105,67 +98,18 @@ def findPlateNumberRegion(img):
         # box = np.int0(box)
         # print('box: ', box)
         # print('boxx: ', box[0][1])
-        # nni = cv2.imread('8.jpg')
-        # ctrr = np.array(box).reshape((-1, 1, 2)).astype(np.int32)
-        # cv2.drawContours(nni, [ctrr], -1, (0, 255, 0), 2)
-        # cv2.imshow('bbbbbiii', nni)
-        # # height = abs(box[0][1] - box[2][1])
-        # # width = abs(box[0][0] - box[2][0])
-        # print(height,width)
-        # cv2.waitKey(0)
+
         # 计算高和宽
-        # print("the angle: ",theAngle)
-        # if theAngle < -80:
         height = abs(box[0][1] - box[2][1])
         width = abs(box[0][0] - box[2][0])
-        # else:
-        #     x_len = abs(box[0][0] - box[1][0])
-        #     y_len = abs(box[0][1] - box[1][1])
-        #     height = math.sqrt(math.pow(x_len, 2) + math.pow(y_len, 2))
-        #     width = math.sqrt(math.pow(abs(box[2][0] - box[1][0]), 2) + math.pow(abs(box[2][1] - box[1][1]), 2))
-        # print("heig", width, height)
-
         # 车牌正常情况下长高比在2.7-5之间
         ratio = float(width) / float(height)
         # print('ratio: ', ratio)
         if (ratio > 5.0 or ratio < 1.4):
             continue
-        # print('ratio: ', ratio)
         region.append(box)
     # print('region: ', region.__len__())
     return region
-
-
-def writePlateBox(box, img):
-    ys = [box[0, 1], box[1, 1], box[2, 1], box[3, 1]]
-    xs = [box[0, 0], box[1, 0], box[2, 0], box[3, 0]]
-    # argsort函数返回的是数组值从小到大的索引值
-    ys_sorted_index = np.argsort(ys)
-    xs_sorted_index = np.argsort(xs)
-    # print('--------',xs_sorted_index, ys_sorted_index)
-    x1 = box[xs_sorted_index[0], 0]
-    x2 = box[xs_sorted_index[3], 0]
-
-    y1 = box[ys_sorted_index[0], 1]
-    y2 = box[ys_sorted_index[3], 1]
-    # print('0----0: ', x1,x2,y1,y2)
-    # img_org2 = img.copy()
-    img_plate = img[int(y1):int(y2), int(x1):int(x2)]
-    cv2.imshow('number plate', img_plate)
-    cv2.imwrite('cutplate.jpg', img_plate)
-    # time.sleep(0.1)
-    # hsvImg = cv2.imread('hsvTest.jpg')
-    # hsv = cv2.cvtColor(img_plate, cv2.COLOR_BGR2HSV)
-    # lower_blue = np.array([94, 43, 46])
-    # upper_blue = np.array([115, 255, 255])
-    # mask = cv2.inRange(hsv, lower_blue, upper_blue)
-    # h, s, v = cv2.split(hsv)
-    # cv2.inRange()
-    # re, sb = cv2.threshold(s, 150, 255, cv2.THRESH_BINARY)
-    # cv2.imshow('mask',mask)
-
-    # cv2.imshow('s', s)
-    # cv2.imshow('v', v)
 
 
 def detect(img):
@@ -179,20 +123,16 @@ def detect(img):
     # HSV处理
     hsvBinary = BlueHsvImg(newImg)
 
-    # cv2.imshow('aa', hsvBinary)
+    cv2.imshow('aa', hsvBinary)
     getCombImg = cv2.bitwise_and(dilation, hsvBinary)
     cv2.imshow('combbb', getCombImg)
-
-    # returnimg, contours, hierarchy = cv2.findContours(getCombImg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    # cv2.drawContours(img, contours, -1, (0, 255, 0), 2)
-    # cv2.imshow('img', img)
     cv2.waitKey(0)
 
     # 查找车牌区域
     region = findPlateNumberRegion(getCombImg)
 
     # 用绿线画出这些找到的轮廓
-    # print('this is region', region)
+    print('this is region', region)
     for box in region:
         """
         you should convert your contour to numpy array first
@@ -202,50 +142,39 @@ def detect(img):
         ctr = np.array(box).reshape((-1, 1, 2)).astype(np.int32)
         # print("asdas", [ctr])
         cv2.drawContours(newImg, [ctr], 0, (0, 255, 0), 2)
-        cv2.imshow('aa', newImg)
-        print('box', box)
-        # cv2.waitKey()
         rectt = cv2.minAreaRect(box)
         angle = rectt[2]
-        # print("angle: ", angle)
         # 矩形倾斜方向判断，往左上为True
         flag = box[0][1] - box[3][1]
         if flag >= 0:
             angle_flag = True
         else:
             angle_flag = False
-
-        writePlateBox(box, img)
-
         # cv2.boxPoints(rectt)
-        print('----this angle flag: ', angle_flag)
-        print('----this angle : ', angle)
+        # print('----this is minrect: ', cv2.minAreaRect(box))
     cv2.imshow('testt', newImg)
-    cv2.waitKey(0)
+    ys = [box[0, 1], box[1, 1], box[2, 1], box[3, 1]]
+    xs = [box[0, 0], box[1, 0], box[2, 0], box[3, 0]]
+    # argsort函数返回的是数组值从小到大的索引值
+    ys_sorted_index = np.argsort(ys)
+    xs_sorted_index = np.argsort(xs)
+    print('--------',xs_sorted_index, ys_sorted_index)
+    x1 = box[xs_sorted_index[0], 0]
+    x2 = box[xs_sorted_index[3], 0]
 
+    y1 = box[ys_sorted_index[0], 1]
+    y2 = box[ys_sorted_index[3], 1]
+    print('0----0: ', x1,x2,y1,y2)
+    # img_org2 = img.copy()
+    img_plate = img[int(y1):int(y2), int(x1):int(x2)]
+    cv2.imshow('number plate', img_plate)
+    cv2.imwrite('number_plate1.jpg', img_plate)
 
-    # ys = [box[0, 1], box[1, 1], box[2, 1], box[3, 1]]
-    # xs = [box[0, 0], box[1, 0], box[2, 0], box[3, 0]]
-    # # argsort函数返回的是数组值从小到大的索引值
-    # ys_sorted_index = np.argsort(ys)
-    # xs_sorted_index = np.argsort(xs)
-    # # print('--------',xs_sorted_index, ys_sorted_index)
-    # x1 = box[xs_sorted_index[0], 0]
-    # x2 = box[xs_sorted_index[3], 0]
-    #
-    # y1 = box[ys_sorted_index[0], 1]
-    # y2 = box[ys_sorted_index[3], 1]
-    # # print('0----0: ', x1,x2,y1,y2)
-    # # img_org2 = img.copy()
-    # img_plate = img[int(y1):int(y2), int(x1):int(x2)]
-    # cv2.imshow('number plate', img_plate)
-    # cv2.imwrite('number_plate1.jpg', img_plate)
-
-    # cv2.namedWindow('img', cv2.WINDOW_NORMAL)
-    # cv2.imshow('img', img)
+    cv2.namedWindow('img', cv2.WINDOW_NORMAL)
+    cv2.imshow('img', img)
 
     # 带轮廓的图片
-    # cv2.imwrite('contours.png', newImg)
+    cv2.imwrite('contours.png', newImg)
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
@@ -256,7 +185,7 @@ if __name__ == '__main__':
     # imgg = cv2.imread("license3.jpeg")
     imgg = cv2.imread("license4.png")
     # imgg = cv2.imread("license.jpeg")
-    # imgg = cv2.imread("6.jpg")
+    # imgg = cv2.imread("timg.jpg")
     # imgg = cv2.imread("cccc.jpeg")
     # imgg = cv2.imread("cuan.jpeg")
 

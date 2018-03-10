@@ -24,9 +24,13 @@ from Projects.LicensePlate.processingImg import preprocess,BlueHsvImg,findPlateN
 #     return int(angle)
 # #
 # #
-img = cv2.imread("license4.png")
-testImg = img.copy()
-gray = cv2.cvtColor(testImg,cv2.COLOR_BGR2GRAY)
+img = cv2.imread("thistest.jpg")
+hsv = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
+h,s,v = cv2.split(hsv)
+cv2.imshow('h', h)
+cv2.imshow('s', s)
+cv2.imshow('v', v)
+
 # ret, binary = cv2.threshold(gray,50,255,cv2.THRESH_BINARY)
 # # cv2.imshow('binary', binary)
 # #
@@ -77,12 +81,12 @@ gray = cv2.cvtColor(testImg,cv2.COLOR_BGR2GRAY)
 # cv2.drawContours(dst, contours,-1,(0,255,0),2)
 # cv2.imshow('hh', dst)
 
-pts1 = np.float32([[10, 10], [10, 20], [20, 20]])
-pts2 = np.float32([[20, 20], [20, 30], [40, 40]])
-M = cv2.getAffineTransform(pts1,pts2)
-row,col = gray.shape
-ddst = cv2.warpAffine(gray, M, (col, row))
-cv2.imshow('affine', ddst)
+# pts1 = np.float32([[10, 10], [10, 20], [20, 20]])
+# pts2 = np.float32([[20, 20], [20, 30], [40, 40]])
+# M = cv2.getAffineTransform(pts1,pts2)
+# row,col = gray.shape
+# ddst = cv2.warpAffine(gray, M, (col, row))
+# cv2.imshow('affine', ddst)
 cv2.waitKey(0)
 #
 
