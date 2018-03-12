@@ -1,3 +1,4 @@
+# @author: Liam gao～～～
 import cv2
 import numpy as np
 import operator
@@ -23,33 +24,39 @@ def whitePointFeature(img):
     return feature
 
 
+# 预处理
 def preprocess(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # 中值滤波或许可以在车牌部分使用
+    # 中值滤波
     equ = cv2.equalizeHist(gray)
     gaussian = cv2.GaussianBlur(equ, (5, 5), 0, 0, cv2.BORDER_DEFAULT)
 
-    # sobel或许可以在车牌部分使用
+    # sobel算子(1,0)表示X梯度
     sobel = cv2.Sobel(gaussian, cv2.CV_8U, 1, 0, ksize=3)
     ret, binary = cv2.threshold(sobel, 125, 255, cv2.THRESH_OTSU + cv2.THRESH_BINARY)
 
-    # 膨胀和腐蚀操作的核函数
+    # 膨胀和腐蚀操作的Kernel
     element1 = cv2.getStructuringElement(cv2.MORPH_RECT, (17, 3))
     element2 = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 3))
 
+    # 膨胀一次，让轮廓突出
     dilation = cv2.dilate(binary, element1, iterations=1)
+    # 腐蚀一次，去掉细节
     erosion = cv2.erode(dilation, element1, iterations=1)
+    # 再次膨胀，让轮廓更加突出～～～
     dilation2 = cv2.dilate(erosion, element2, iterations=3)
 
-    cv2.imshow('e', dilation2)
+    cv2.imshow('dilation2', dilation2)
     cv2.waitKey()
     return dilation2
 
 
+# 使用HSV空间，进行颜色定位
 def hsvprocess(img, isHsvOr_S):
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    # 为True返回S通道，为False返回HSV
+
+    # 为True返回S通道（有时候效果不错～），为False返回HSV
     if isHsvOr_S:
         h, s, v = cv2.split(hsv)
         ret, binary = cv2.threshold(s, 100, 255, cv2.THRESH_BINARY)
@@ -57,20 +64,14 @@ def hsvprocess(img, isHsvOr_S):
         element2 = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 3))
         dilation = cv2.dilate(binary, element1, iterations=1)
         erosion = cv2.erode(dilation, element2, iterations=2)
-        # element1 = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 3))
-        # dilation = cv2.dilate(binary, element1, iterations=1)
-        # cv2.imshow('S_HSV', erosion)
-        # cv2.waitKey()
-        return dilation
+        return erosion
     else:
+        # 因为蓝色车牌，所以查表找到蓝色的HSV的值。。。。
         lower_blue = np.array([80, 43, 46])
         upper_blue = np.array([115, 255, 255])
         mask = cv2.inRange(hsv, lower_blue, upper_blue)
-
         element1 = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 3))
         dilation = cv2.dilate(mask, element1, iterations=1)
-        # cv2.imshow('Blue_HSV', dilation)
-        # cv2.waitKey()
         return dilation
 
 
@@ -80,6 +81,7 @@ def findPlateNumberRegion(combImg):
     for i in range(len(contours)):
         cnt = contours[i]
         area = cv2.contourArea(cnt)
+        # 忽略掉小面积的细节
         if (area < 2000):
             continue
 
@@ -89,15 +91,17 @@ def findPlateNumberRegion(combImg):
 
         # 找到最小的矩形，该矩形可能有方向
         rect = cv2.minAreaRect(approx)
+        # rect里面的第三个就是角度，用来判断取出来的区域是不是倾斜的
         anglee = rect[2]
 
-        if anglee > -80 and anglee < -30:
+        if anglee > -80 and anglee < -30:  # 停车场不会出现这么变态的车牌的！！！
             continue
         box = cv2.boxPoints(rect)
 
         height = abs(box[0][1] - box[2][1])
         width = abs(box[0][0] - box[2][0])
         ratio = float(width) / float(height)
+        # 查资料得。。。中国车牌的长宽比。。。
         if (ratio > 5.0 or ratio < 1.3):
             continue
         print('rect angle is:', anglee)
@@ -107,15 +111,15 @@ def findPlateNumberRegion(combImg):
 
 def writeRegions(region, img):
     newImg = img.copy()
-    # print(cv2.contourArea(region[0]))
-    # print(cv2.contourArea(region[1]))
     area_max_index = 0
+    # 以下为佛系判断， 缘分到了，自然就对了。。。。
+    # 上一步保存的区域，如果超过两个就进行判断。。。。选大的区域，恩，没错！
     if len(region) > 1:
         area_max = cv2.contourArea(region[0])
         print('area0', area_max)
         for i in range(1, len(region)):
             area = cv2.contourArea(region[i])
-            if area > 20000:
+            if area > 20000:  # 大的离谱的就跟它说声凉凉～～
                 continue
             print('area', area)
             if area_max < area:
@@ -124,28 +128,25 @@ def writeRegions(region, img):
     else:
         pass
 
-    cv2.waitKey()
-
     box = region[area_max_index]
+    # 格式化一下区域，以便画图。。。。
     ctr = np.array(box).reshape((-1, 1, 2)).astype(np.int32)
     cv2.drawContours(newImg, [ctr], 0, (0, 255, 0), 2)
-    # cv2.imshow('??????/', newImg)
-    # cv2.waitKey()
+
     ys = [box[0, 1], box[1, 1], box[2, 1], box[3, 1]]
     xs = [box[0, 0], box[1, 0], box[2, 0], box[3, 0]]
     # argsort函数返回的是数组值从小到大的索引值
     ys_sorted_index = np.argsort(ys)
     xs_sorted_index = np.argsort(xs)
-    # print('--------',xs_sorted_index, ys_sorted_index)
     x1 = box[xs_sorted_index[0], 0]
     x2 = box[xs_sorted_index[3], 0]
-
     y1 = box[ys_sorted_index[0], 1]
     y2 = box[ys_sorted_index[3], 1]
 
     img_plate = img[int(y1):int(y2), int(x1):int(x2)]
     cv2.imshow('plate', newImg)
     cv2.imshow('number plate', img_plate)
+    # 注意了！！！下面就是输出车牌了
     cv2.imwrite('thePlate.jpg', img_plate)
 
     rect = cv2.minAreaRect(box)
@@ -235,7 +236,7 @@ def affineFunction(img):
     print('len2', row2Length)
     print('len3', row3Length)
 
-    # 判断是斜率是正True还是负False，小于一定度数就不进行仿射变换
+    # 判断是斜率是正True还是负False，小于一定度数就不进行仿射变换, 存在一些问题，就交给你们完美了！
     angle_flag = False
     if row1Length > row3Length:
         angle_flag = True
@@ -253,7 +254,7 @@ def affineFunction(img):
     #     slope = 0.2
     #     angle_flag = True
 
-    # 斜率大于0.1就进行仿射变换
+    # 斜率大于0.1就进行仿射变换，这里算的就是车牌本身的斜率
     global angle
     print('this angle', angle)
     if slope > 0.1 and angle < -5:
@@ -325,7 +326,7 @@ def cutPlateFunction(img):
     cv2.imshow('newCutImg', newBinary)
     cv2.waitKey()
 
-    # 开始画轮廓，取字符
+    # 开始画轮廓，取字符，注意参数：EXTERNAL
     reImg, contours, hierarchy = cv2.findContours(newBinary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     picPoints = []
     for contour in contours:
@@ -378,6 +379,7 @@ def cutPlateFunction(img):
 
 
 def recongnitionPlate():
+    # 十大经典机器算法之。。。。。。逻辑回归！！！！！！
     r = np.load('trainData.npz')
     feature = r["arr_0"]
     labels = r["arr_1"]
@@ -412,33 +414,36 @@ def recongnitionPlate():
 
 if __name__ == '__main__':
     img = cv2.imread('1.jpg')
-    # 形态学处理
+
+    # ------------------------------------------------------形态学处理--------------------------------------------------------------
     dilation = preprocess(img)
     hsv = hsvprocess(img, False)
-    combImg = cv2.bitwise_and(dilation, hsv)
+    combImg = cv2.bitwise_and(dilation, hsv)  # I have a pen， I have an apple 。。。。。Apple～pen～
     cv2.imshow('comb', combImg)
     cv2.waitKey()
-
+    # 用定位出来的二值化的combImg找车牌
     region = findPlateNumberRegion(combImg)
     angle = writeRegions(region, img)
 
-    # 车牌进行旋转纠正 , 还存在未验证的部分角度
+    # 车牌进行旋转纠正
     plate = cv2.imread('thePlate.jpg')
     row, col = plate.shape[:2]
+    # 这个偏转角度分了框选车牌的方框，往上和往下偏的两种情况
     if angle < -6:
         if angle > -50:
             M = cv2.getRotationMatrix2D((col // 2, row // 2), angle, 1)
         else:
             angle = -(90 + angle)
             M = cv2.getRotationMatrix2D((col // 2, row // 2), -angle, 1)
-
+        # 角度算出来了，就可以旋转跳跃了。
+        # Warning！这里是旋转选中的框框，不是车牌本身
         dst = cv2.warpAffine(plate, M, (col, row))
         cv2.imshow('aaa', dst)
         cv2.waitKey()
     else:
         dst = plate
     # -----------------------------------------------------------------------------------------------------
-    # 再次进行颜色定位，消除车牌部分干扰
+    # 再次进行HSV的S定位，用S美滋滋。消除车牌部分干扰， 毕竟形态学不是完美的！会框多了其他区域。。。。测试车牌9的时候，需要改成False，交给你门了！
     p_hsv = hsvprocess(dst, True)
     # 进行切割黑色部分
     row1, row2, col1, col2 = cutBlack(p_hsv)
